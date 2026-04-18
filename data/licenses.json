@@ -1,0 +1,17 @@
+{
+  "VIP-MONTH-8888": {
+    "deviceId": "e7f0952f-f220-48bd-8926-8193d0631bf0",
+    "expiresAt": 1779121711654,
+    "note": "月卡测试"
+  },
+  "VIP-YEAR-9999": {
+    "deviceId": null,
+    "expiresAt": 1808065711654,
+    "note": "年卡测试"
+  },
+  "VIP-TEST-0000": {
+    "deviceId": null,
+    "expiresAt": 1776529710654,
+    "note": "过期测试"
+  }
+}
