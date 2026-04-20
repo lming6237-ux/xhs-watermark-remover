@@ -24,23 +24,33 @@ function cleanImageUrls(urls: string[]): string[] {
     cleanUrl = cleanUrl.replace(/\\"/g, '');
     // 去掉问号后的参数
     cleanUrl = cleanUrl.split("?")[0];
- 
-    // 提取形如 1040g... 的 fileId，通常在最后一个 / 之后，! 之前
-    const parts = cleanUrl.split('/');
-    const lastPart = parts[parts.length - 1];
-    if (lastPart) {
-      const fileId = lastPart.split('!')[0];
-      // 如果是小红书图片域名，则将其转换为原图域名
-      if (fileId && cleanUrl.includes('xhscdn.com')) {
-        return `https://sns-img-qc.xhscdn.com/${fileId}`;
+
+    // 如果是小红书图片域名，提取真实的资源路径（过滤掉防盗链的时间戳和 MD5 Hash）
+    if (cleanUrl.includes('xhscdn.com')) {
+      // 匹配形如 /202604202235/c78097b1.../notes_pre_post/1040g...!suffix 的防盗链格式
+      const tsHashMatch = cleanUrl.match(/\/\d{8,14}\/[a-fA-F0-9]{32}\/(.*?)!/);
+      if (tsHashMatch && tsHashMatch[1]) {
+        return `https://ci.xiaohongshu.com/${tsHashMatch[1]}`;
+      }
+      
+      // 匹配普通的 fileId!suffix
+      const simpleMatch = cleanUrl.match(/xhscdn\.com\/(.*?)!/);
+      if (simpleMatch && simpleMatch[1]) {
+        return `https://ci.xiaohongshu.com/${simpleMatch[1]}`;
+      }
+
+      // 如果连 ! 都没有，直接取域名后的路径
+      const noSuffixMatch = cleanUrl.match(/xhscdn\.com\/(.*)/);
+      if (noSuffixMatch && noSuffixMatch[1]) {
+        return `https://ci.xiaohongshu.com/${noSuffixMatch[1]}`;
       }
     }
- 
+
     return cleanUrl;
   });
- 
+
   // 去重并过滤掉带有 avatar 字样的链接
-  return Array.from(new Set(cleanImages)).filter(u => !u.includes('avatar') && u.includes('xhscdn.com'));
+  return Array.from(new Set(cleanImages)).filter(u => !u.includes('avatar') && (u.includes('xhscdn.com') || u.includes('xiaohongshu.com')));
 }
  
 export async function POST(request: Request) {

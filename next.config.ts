@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: '**.xhscdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.xiaohongshu.com',
       }
     ],
   },
