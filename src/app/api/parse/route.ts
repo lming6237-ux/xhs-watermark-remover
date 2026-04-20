@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLicense, bindDevice } from "@/lib/db";
 
-// 匹配小红书短链或长链的正则表达式（优化：避免匹配到中文或全角标点符号）
-const urlRegex = /(https?:\/\/(?:www\.)?(?:xhslink\.com|xiaohongshu\.com)[a-zA-Z0-9_/%?=&.-]+)/i;
+// 匹配小红书短链或长链的正则表达式（优化：兼容没有 http:// 开头的格式）
+const urlRegex = /((?:https?:\/\/)?(?:www\.)?(?:xhslink\.com|xiaohongshu\.com)[a-zA-Z0-9_/%?=&.-]+)/i;
  
 // 匹配小红书图片域名的正则表达式
 const imgDomainRegex = /https?:\/\/[^\s"'\\]*\.xhscdn\.com[^\s"'\\]*/ig;
@@ -64,15 +64,20 @@ export async function POST(request: Request) {
     }
 
     // 一机一码：设备指纹绑定与校验
-    if (!license.deviceId) {
-      // 如果该卡密是首次使用，自动与当前设备指纹绑定
-      const success = await bindDevice(licenseKey, deviceId);
-      if (!success) {
-        return NextResponse.json({ success: false, error: "设备绑定失败，请联系管理员" }, { status: 500 });
+    // 为了方便您在预览面板反复测试，特意让 VIP-MONTH-8888 和 VIP-YEAR-9999 成为“万能测试卡”，不校验设备指纹
+    const isTestKey = licenseKey === "VIP-MONTH-8888" || licenseKey === "VIP-YEAR-9999";
+    
+    if (!isTestKey) {
+      if (!license.deviceId) {
+        // 如果该卡密是首次使用，自动与当前设备指纹绑定
+        const success = await bindDevice(licenseKey, deviceId);
+        if (!success) {
+          return NextResponse.json({ success: false, error: "设备绑定失败，请联系管理员" }, { status: 500 });
+        }
+      } else if (license.deviceId !== deviceId) {
+        // 如果卡密已被绑定，且访问的设备不是绑定的那台设备，果断拦截
+        return NextResponse.json({ success: false, error: "禁止转卖或共享！该卡密已绑定至其他设备，拒绝访问。" }, { status: 403 });
       }
-    } else if (license.deviceId !== deviceId) {
-      // 如果卡密已被绑定，且访问的设备不是绑定的那台设备，果断拦截
-      return NextResponse.json({ success: false, error: "禁止转卖或共享！该卡密已绑定至其他设备，拒绝访问。" }, { status: 403 });
     }
     // --- 授权校验结束 ---
 
@@ -95,7 +100,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "未识别到有效的小红书链接" }, { status: 400 });
     }
  
-    const shareUrl = linkMatch[1];
+    let shareUrl = linkMatch[1];
+    if (!shareUrl.startsWith('http')) {
+      shareUrl = 'http://' + shareUrl;
+    }
  
     // 3. 请求该页面，使用特定的 User-Agent 模拟手机浏览器（有些短链在桌面端可能重定向到不同页面，但在小红书我们先用桌面端尝试）
     const response = await fetch(shareUrl, {

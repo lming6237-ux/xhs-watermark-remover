@@ -306,10 +306,12 @@ type="text"
 value={url}
 onChange={(e) => {
 const val = e.target.value;
-// 尝试自动从粘贴的长文本中提取链接
-const match = val.match(/(https?:\/\/(?:www\.)?(?:xhslink\.com|xiaohongshu\.com)[a-zA-Z0-9_/%?=&.-]+)/i);
-if (match && val.length > match[1].length + 5) {
-setUrl(match[1]); // 如果找到了链接并且原文本包含较多其他杂字，则自动净化为纯链接
+// 尝试自动从粘贴的长文本中提取链接（兼容没有 http:// 开头的格式，以及可能包裹在反引号等特殊字符中的链接）
+const match = val.match(/((?:https?:\/\/)?(?:www\.)?(?:xhslink\.com|xiaohongshu\.com)[a-zA-Z0-9_/%?=&.-]+)/i);
+if (match) {
+// 为了防止提取的链接中包含后面的多余字符，再做一次清理
+const cleanLink = match[1].split(/[\s|`"'\\]/)[0];
+setUrl(cleanLink); // 如果找到了链接，就直接提取为纯链接
 } else {
 setUrl(val);
 }
